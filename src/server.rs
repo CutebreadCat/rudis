@@ -1,25 +1,15 @@
-use std::fmt;
+use std::{fmt, sync::{Arc, Mutex}};
 use crate::RESP;
+use crate::storage::{Storage};
+use crate::storage_result::{StorageError, StorageResult};
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ServerError {
-    CommandError,
-}
 
-impl fmt::Display for ServerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ServerError::CommandError => write!(f, "Command error"),
-        }
-    }
-}
 
-pub type ServerResult<T> = Result<T, ServerError>;
 
-pub fn process_requeset(request: RESP) -> ServerResult<RESP> {
+pub fn process_requeset(request: RESP, storage: Arc<Mutex<Storage>>) -> StorageResult<RESP> {
     let elements = match request {
         RESP::Array(v) => v,
-        _ => return Err(ServerError::CommandError),
+        _ => return Err(StorageError::IncorrectRequest),
     };
 
     if elements.is_empty() {
@@ -29,19 +19,14 @@ pub fn process_requeset(request: RESP) -> ServerResult<RESP> {
     let mut command = Vec::new();
     for elem in elements.iter() {
         match elem {
-            RESP::BulkString(v) => command.push(v.to_string()),
-            _ => return Ok(RESP::Error(String::from("ERR unknown command"))),
+            RESP::BulkString(v) => command.push(v.clone()),
+            _ => return Err(StorageError::IncorrectRequest),
+            //这边不应该直接返回对于一个正确的设计应该是返回一个报错但不终止客户端的连接
         }
     }
 
-    println!("Received command: {:?}", command);
 
-    match command[0].to_lowercase().as_str() {
-        "ping" => Ok(RESP::SimpleString(String::from("PONG"))),
-        "command" => Ok(RESP::Array(vec![])),
-        "info" => Ok(RESP::BulkString(String::from(
-            "# Server\r\nredis_version:7.0.0\r\n",
-        ))),
-        _ => Ok(RESP::Error(String::from("ERR unknown command"))),
-    }
+    let mut guard = storage.lock().unwrap();
+    let reponse = guard.process_command(command);
+    reponse
 }

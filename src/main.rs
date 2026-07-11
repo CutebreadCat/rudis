@@ -1,3 +1,4 @@
+
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
@@ -5,21 +6,25 @@ use tokio::{
 
 use crate::resp::{RESP,bytes_to_resp};
 use crate::server::process_requeset;
+use crate::storage::Storage;
+use std::sync::{Arc,Mutex};
 
 mod resp;
 mod resp_result;
 mod server;
+mod storage;
+mod storage_result;
 
 #[tokio::main]
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
-
+    let storage = Arc::new(Mutex::new(Storage::new()));
     loop {
         match listener.accept().await {
-            Ok((mut stream, _)) => {
-                tokio::spawn(async move {
-                    handle_connection(&mut stream).await;
-                });
+            Ok((stream, _)) => {
+                tokio::spawn( 
+                    handle_connection(stream,storage.clone())
+                );
             }
             Err(e) => {
                 println!("Error accepting connection: {}", e);
@@ -29,7 +34,7 @@ async fn main() {
     }
 }
 
-async fn handle_connection(stream: &mut TcpStream) {
+async fn handle_connection(mut stream: TcpStream,storage:Arc<Mutex<Storage>>) {
     let mut buffer = [0; 512];
     loop {
         match stream.read(&mut buffer).await {
@@ -42,7 +47,7 @@ async fn handle_connection(stream: &mut TcpStream) {
                        return;
                    }
                };
-               let response = match process_requeset(request){
+               let response = match process_requeset(request,storage.clone()){
                    Ok(resp)=>resp,
                    Err(e)=>{
                        eprintln!("Error processing request: {}", e);
