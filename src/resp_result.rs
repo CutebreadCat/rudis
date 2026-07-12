@@ -1,6 +1,6 @@
 use std::fmt::{self};
-use std::string::FromUtf8Error;
 use std::num;
+use std::string::FromUtf8Error;
 #[derive(Debug, PartialEq, Eq)]
 pub enum RESPError {
     FromUtf8,

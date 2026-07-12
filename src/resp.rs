@@ -1,6 +1,6 @@
 use crate::resp_result::RESPError;
-use crate::resp_result::RESPResult;
 use crate::resp_result::RESPLenth;
+use crate::resp_result::RESPResult;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -266,24 +266,23 @@ pub fn bytes_to_resp(buffer: &[u8], index: &mut usize) -> RESPResult<RESP> {
     }
 }
 
-fn binary_extract_bytes(buffer: &[u8], index: &mut usize,length:usize)->RESPResult<Vec<u8>>{
+fn binary_extract_bytes(buffer: &[u8], index: &mut usize, length: usize) -> RESPResult<Vec<u8>> {
     let mut output = Vec::new();
     if *index + length > buffer.len() {
         return Err(RESPError::OutOfBounds(*index));
     }
-    output.extend_from_slice(&buffer[*index..*index+length]);
+    output.extend_from_slice(&buffer[*index..*index + length]);
     *index += length;
     Ok(output)
-    
 }
 
-pub fn resp_extract_length(buffer: &[u8],index: &mut usize)->RESPResult<RESPLenth>{
+pub fn resp_extract_length(buffer: &[u8], index: &mut usize) -> RESPResult<RESPLenth> {
     let length_str = binary_extract_line_as_string(buffer, index)?;
     let length: RESPLenth = length_str.parse()?;
     Ok(length)
 }
 
-fn parse_bulk_string(buffer: &[u8], index: &mut usize)->RESPResult<RESP>{
+fn parse_bulk_string(buffer: &[u8], index: &mut usize) -> RESPResult<RESP> {
     resp_remove_type('$', buffer, index)?;
     let length = resp_extract_length(buffer, index)?;
     if length == -1 {
@@ -299,18 +298,16 @@ fn parse_bulk_string(buffer: &[u8], index: &mut usize)->RESPResult<RESP>{
     *index += 2;
     let value = String::from_utf8(bytes)?;
     Ok(RESP::BulkString(value))
-   
-
 }
-fn parse_array(buffer: &[u8], index: &mut usize)->RESPResult<RESP>{
+fn parse_array(buffer: &[u8], index: &mut usize) -> RESPResult<RESP> {
     resp_remove_type('*', buffer, index)?;
     let length = resp_extract_length(buffer, index)?;
-    if length <0{
+    if length < 0 {
         return Err(RESPError::IncorrectLength(length));
     }
     let mut output = Vec::new();
-    for _ in 0..length{
-        match parser_router(buffer, index){
+    for _ in 0..length {
+        match parser_router(buffer, index) {
             Some(parse_func) => {
                 let result: RESP = parse_func(buffer, index)?;
                 output.push(result);
@@ -319,5 +316,4 @@ fn parse_array(buffer: &[u8], index: &mut usize)->RESPResult<RESP>{
         }
     }
     Ok(RESP::Array(output))
-    
 }

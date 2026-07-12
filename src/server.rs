@@ -1,10 +1,10 @@
-use std::{fmt, sync::{Arc, Mutex}};
 use crate::RESP;
-use crate::storage::{Storage};
+use crate::storage::Storage;
 use crate::storage_result::{StorageError, StorageResult};
-
-
-
+use std::{
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 pub fn process_requeset(request: RESP, storage: Arc<Mutex<Storage>>) -> StorageResult<RESP> {
     let elements = match request {
@@ -24,7 +24,6 @@ pub fn process_requeset(request: RESP, storage: Arc<Mutex<Storage>>) -> StorageR
             //这边不应该直接返回对于一个正确的设计应该是返回一个报错但不终止客户端的连接
         }
     }
-
 
     let mut guard = storage.lock().unwrap();
     let reponse = guard.process_command(command);
