@@ -122,26 +122,9 @@ impl Storage {
         }
     }
 
-    pub fn process_command(&mut self, command: Vec<String>) -> StorageResult<RESP> {
-        match command[0].to_lowercase().as_str() {
-            "ping" => self.command_ping(command),
-            "echo" => self.command_echo(command),
-            "info" => Ok(RESP::BulkString(String::from(
-                "# Server\r\nredis_version:7.0.0\r\n",
-            ))),
-            "quit" => Ok(RESP::SimpleString(String::from("OK"))),
-            "set" => self.command_set(command),
-            "get" => self.command_get(command),
-            _ => Err(StorageError::CommandNotAvaliable(command[0].clone())),
-        }
-    }
-    fn command_ping(&mut self, command: Vec<String>) -> StorageResult<RESP> {
-        Ok(RESP::SimpleString("PONG".to_string()))
-    }
-    fn command_echo(&mut self, command: Vec<String>) -> StorageResult<RESP> {
-        Ok(RESP::SimpleString(command[1].clone()))
-    }
-    fn set(&mut self, key: String, value: String, args: SetArgs) -> StorageResult<Option<String>> {
+
+
+    pub fn set(&mut self, key: String, value: String, args: SetArgs) -> StorageResult<Option<String>> {
         // NX/XX existence check based on current key presence (with passive expire).
         let key_exists = self.get(key.clone())?.is_some();
         match args.existence {
@@ -166,7 +149,7 @@ impl Storage {
         self.store.insert(key, data);
         Ok(Some("OK".to_string()))
     }
-    fn get(&mut self, key: String) -> StorageResult<Option<String>> {
+    pub fn get(&mut self, key: String) -> StorageResult<Option<String>> {
         // Passive expiration: check and remove expired keys on access.
         if let Some(&expiry_time) = self.expiry.get(&key) {
             if expiry_time <= SystemTime::now() {
@@ -184,28 +167,7 @@ impl Storage {
             None => Ok(None),
         }
     }
-    fn command_set(&mut self, command: Vec<String>) -> StorageResult<RESP> {
-        if command.len() < 3 {
-            return Err(StorageError::IncorrectRequest);
-        }
-        let set_args = parse_set_arguments(&command[3..].to_vec())?;
-        let result = self.set(command[1].clone(), command[2].clone(), set_args)?;
-        match result {
-            Some(_) => Ok(RESP::SimpleString("OK".to_string())),
-            None => Ok(RESP::Null),
-        }
-    }
-    fn command_get(&mut self, command: Vec<String>) -> StorageResult<RESP> {
-        if command.len() != 2 {
-            return Err(StorageError::IncorrectRequest);
-        }
-        let output = self.get(command[1].clone());
-        match output {
-            Ok(Some(v)) => Ok(RESP::BulkString(v)),
-            Ok(None) => Ok(RESP::Null),
-            Err(_) => Err(StorageError::CommandNotAvaliable(command.join(" "))),
-        }
-    }
+
 }
 
 impl StorageDate {

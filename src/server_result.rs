@@ -3,7 +3,8 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ServerError {
-    CommandError,
+    CommandInternalError(String),
+    CommandSyntaxError(String),
     IncorrectData,
     StorageNotInititalised,
 }
@@ -11,7 +12,8 @@ pub enum ServerError {
 impl fmt::Display for ServerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ServerError::CommandError => write!(f, "Command error"),
+            ServerError::CommandInternalError(s) => write!(f, "Internal error: {}", s),
+            ServerError::CommandSyntaxError(s) => write!(f, "Syntax error: {}", s),
             ServerError::IncorrectData => write!(f, "Incorrect data"),
             ServerError::StorageNotInititalised => write!(f, "Storage not initialised"),
         }

@@ -1,4 +1,5 @@
 use crate::RESP;
+use crate::commands::{echo, ping,set,get};
 use crate::connection::ConnectionMessage;
 use crate::request::Request;
 use crate::server_result::{ServerError, ServerMessage, ServerValue};
@@ -69,18 +70,26 @@ pub async fn process_requeset(request: Request, server: &mut Server) {
             } //这边不应该直接返回对于一个正确的设计应该是返回一个报错但不终止客户端的连接
         }
     }
-    let storage = match server.storage.as_mut() {
-        Some(storage) => storage,
-        None => {
-            request.error(ServerError::IncorrectData).await;
-            return;
+    let command_name = command[0].to_lowercase();
+    match command_name.as_str() {
+        "echo"=>{
+            echo::command(server, &request,&command).await;
         }
-    };
-    let reponse = storage.process_command(command);
-    match reponse {
-        Ok(v) => {
-            request.data(ServerValue::RESP(v)).await;
+        "ping"=>{
+            ping::command(server, &request,&command).await;
         }
-        Err(_e) => (),
+        "set"=>{
+            set::command(server, &request,&command).await;
+        }
+        "get"=>{
+            get::command(server, &request,&command).await;
+        }
+        "info"=>{
+            request.data(ServerValue::RESP(RESP::SimpleString("TODO".to_string()))).await;
+        }
+
+        _ => {
+            request.error(ServerError::CommandInternalError(command_name)).await;
+        }
     }
 }

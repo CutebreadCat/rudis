@@ -23,6 +23,7 @@ mod server_result;
 mod set;
 mod storage;
 mod storage_result;
+mod commands;
 
 #[tokio::main]
 async fn main() {
