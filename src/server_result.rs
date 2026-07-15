@@ -7,6 +7,7 @@ pub enum ServerError {
     CommandSyntaxError(String),
     IncorrectData,
     StorageNotInititalised,
+    HandshakeFailed(String),
 }
 
 impl fmt::Display for ServerError {
@@ -16,12 +17,14 @@ impl fmt::Display for ServerError {
             ServerError::CommandSyntaxError(s) => write!(f, "Syntax error: {}", s),
             ServerError::IncorrectData => write!(f, "Incorrect data"),
             ServerError::StorageNotInititalised => write!(f, "Storage not initialised"),
+            ServerError::HandshakeFailed(s) => write!(f, "Handshake failed: {}", s),
         }
     }
 }
 #[derive(Debug)]
 pub enum ServerValue {
     RESP(RESP),
+    None,
 }
 pub type ServerResult = Result<ServerValue, ServerError>;
 #[derive(Debug)]

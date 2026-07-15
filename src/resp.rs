@@ -1,4 +1,4 @@
-      use crate::resp_result::RESPError;
+use crate::resp_result::RESPError;
 use crate::resp_result::RESPLenth;
 use crate::resp_result::RESPResult;
 use std::fmt;
@@ -316,4 +316,8 @@ fn parse_array(buffer: &[u8], index: &mut usize) -> RESPResult<RESP> {
         }
     }
     Ok(RESP::Array(output))
+}
+
+pub fn bulk_string_from_vec(string: Vec<String>) -> RESP {
+    RESP::BulkString(string.join("\r\n"))
 }

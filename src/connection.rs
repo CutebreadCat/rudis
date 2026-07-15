@@ -1,8 +1,7 @@
 use crate::request::Request;
 use crate::resp::bytes_to_resp;
-use crate::server;
+use crate::server::handshake;
 use crate::server_result::{ServerError, ServerMessage, ServerValue};
-use server::process_requeset;
 use std::fmt;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -70,6 +69,7 @@ async fn handle_connection(mut stream: TcpStream, server_send: mpsc::Sender<Conn
                 let _ =match reponse{
 
                     ServerMessage::Data(ServerValue::RESP(v))=>stream.write_all(v.to_string().as_bytes()).await,
+                    ServerMessage::Data(ServerValue::None)=>{Ok(())}
                     ServerMessage::Error(v)=>{
                         eprintln!("Error: {}", v);
                         return;
@@ -91,7 +91,7 @@ pub async fn run_listner(host: String, port: u16, server_sender: mpsc::Sender<Co
             connection = listener.accept() => {
                 match connection {
                     Ok((stream, _)) => {
-                        handle_connection(stream, server_sender.clone()).await;
+                        tokio::spawn(handle_connection(stream, server_sender.clone()));
                     }
                     Err(e) => {
                         eprintln!("Error accepting connection: {}", e);
@@ -102,4 +102,19 @@ pub async fn run_listner(host: String, port: u16, server_sender: mpsc::Sender<Co
 
         }
     }
+}
+
+pub async fn run_master_listener(
+    host: String,
+    port: u16,
+    server_sender: mpsc::Sender<ConnectionMessage>,
+) {
+    let mut stream = TcpStream::connect(format!("{}:{}", host, port))
+        .await
+        .unwrap();
+    if let Err(e) = handshake(&mut stream).await {
+        eprintln!("Handshake failed :{}", e.to_string());
+        return;
+    }
+    tokio::spawn(async move { handle_connection(stream, server_sender.clone()).await });
 }

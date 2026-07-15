@@ -1,28 +1,39 @@
-use crate::RESP;
-use crate::commands::{echo, ping,set,get};
+use crate::{RESP, resp};
+use crate::commands::{echo, ping,set,get,info};
 use crate::connection::ConnectionMessage;
 use crate::request::Request;
-use crate::server_result::{ServerError, ServerMessage, ServerValue};
+use crate::server_result::{ServerError, ServerResult, ServerValue};
 use crate::storage::Storage;
-use crate::storage_result::{StorageError, StorageResult};
-use std::time::Duration;
-use std::{
-    fmt,
-    sync::{Arc, Mutex},
+use crate::resp::bytes_to_resp;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+    
 };
+
+use std::time::Duration;
 use tokio::sync::mpsc;
+use crate::replication::ReplicationConfig;
 
 pub struct Server {
+    pub info: Serverinfo,
     pub storage: Option<Storage>,
+    pub replication:ReplicationConfig
+
 }
 impl Server {
-    pub fn new(storage: Storage) -> Self {
+    pub fn new(host: String, port: u16) -> Self {
         Server {
-            storage: Some(storage),
+            info: Serverinfo { host, port },
+            storage: None,
+            replication: ReplicationConfig::new_master(),
         }
     }
     pub fn set_storage(&mut self, storage: Storage) {
         self.storage = Some(storage);
+    }
+    pub fn set_replication(&mut self, replication:ReplicationConfig) {
+        self.replication = replication;
     }
     pub fn expire_keys(&mut self) {
         let storage = match self.storage.as_mut() {
@@ -32,6 +43,11 @@ impl Server {
         storage.expire_keys();
     }
 }
+pub struct Serverinfo{
+    pub host:String,
+    pub port:u16,
+}
+
 
 pub async fn run_server(mut server: Server, mut crx: mpsc::Receiver<ConnectionMessage>) {
     let mut interval_timer = tokio::time::interval(Duration::from_secs(10));
@@ -85,11 +101,39 @@ pub async fn process_requeset(request: Request, server: &mut Server) {
             get::command(server, &request,&command).await;
         }
         "info"=>{
-            request.data(ServerValue::RESP(RESP::SimpleString("TODO".to_string()))).await;
+            info::command(server, &request,&command).await;
         }
 
         _ => {
             request.error(ServerError::CommandInternalError(command_name)).await;
         }
     }
+}
+
+pub async fn handshake(stream:&mut TcpStream) -> ServerResult{
+    let ping = RESP::Array(vec![RESP::BulkString(String::from("PING"))]);
+    stream.write_all(ping.to_string().as_bytes()).await.map_err(|e| ServerError::HandshakeFailed(
+        format!("Sending{} - Cannot write to stream: {}", ping.to_string(), e.to_string())
+    ))?;
+    let mut buffer = [0;512];
+    let size = stream.read(&mut buffer).await.map_err(|e| ServerError::HandshakeFailed(
+        format!("Receiving - Cannot read from stream: {}", e.to_string())
+    ))?;
+    if size == 0 {
+        return Err(ServerError::HandshakeFailed("Receiving - No data received".to_string()));
+    }
+    let mut index:usize = 0;
+    let resp = bytes_to_resp(&buffer, &mut index).map_err(|e|{
+        ServerError::HandshakeFailed(format!(
+            "Sending {} -Wrong server answer: {}",ping.to_string(),e.to_string()
+        ))
+    })?;
+
+    if resp != RESP::SimpleString(String::from("PONG")) {
+        return Err(ServerError::HandshakeFailed(format!(
+            "Sending {} -Wrong server answer: {}",ping.to_string(),resp.to_string()
+        )));
+    }
+    
+    Ok(ServerValue::None)
 }

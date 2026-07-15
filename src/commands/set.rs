@@ -1,7 +1,7 @@
 use crate::request::Request;
 use crate::resp::RESP;
 use crate::server::Server;
-use crate::server_result::{ServerError, ServerMessage, ServerValue};
+use crate::server_result::{ServerError, ServerValue};
 use crate::set::parse_set_arguments;
 
 pub async fn command(_server: &mut Server, _request: &Request,_command:&Vec< String>){
@@ -19,7 +19,7 @@ pub async fn command(_server: &mut Server, _request: &Request,_command:&Vec< Str
     let value = _command[2].clone();
     let args = match parse_set_arguments(&_command[3..].to_vec()){
         Ok(args)=>args,
-        Err(error)=>{
+        Err(_)=>{
             _request.error(ServerError::CommandSyntaxError(_command.join(" "))).await;
             return;
         }

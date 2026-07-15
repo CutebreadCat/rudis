@@ -1,16 +1,18 @@
 use std::collections::HashMap;
 
-use crate::resp::RESP;
-use crate::set::{KeyExistence, KeyExpiry, SetArgs, parse_set_arguments};
-use crate::storage_result::{StorageError, StorageResult};
+use crate::set::{KeyExistence, KeyExpiry, SetArgs};
+use crate::storage_result::StorageResult;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum StorageValue {
     String(String),
 }
+#[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{SetArgs, Storage};
+    use std::collections::HashMap;
+    use std::time::{Duration, SystemTime};
     #[test]
     fn test_storage_date_eq() {
         let storage: Storage = Storage::new();
