@@ -8,6 +8,7 @@ pub enum RESP {
     SimpleString(String),
     Null,
     BulkString(String),
+    RDBPrefix(usize),
     Array(Vec<RESP>),
     Integer(i64),
     Error(String),
@@ -19,6 +20,7 @@ impl fmt::Display for RESP {
             RESP::SimpleString(value) => format!("+{}\r\n", value),
             RESP::Null => "$-1\r\n".to_string(),
             RESP::BulkString(value) => format!("${}\r\n{}\r\n", value.len(), value),
+            RESP::RDBPrefix(value) => format!("*RDBPrefix {}\r\n", value),
             RESP::Array(values) => {
                 let mut output = format!("*{}\r\n", values.len());
                 for value in values {

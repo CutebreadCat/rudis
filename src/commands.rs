@@ -1,5 +1,7 @@
 pub mod echo;
-pub mod ping;
 pub mod get;
-pub mod set;
 pub mod info;
+pub mod ping;
+pub mod psync;
+pub mod replonf;
+pub mod set;

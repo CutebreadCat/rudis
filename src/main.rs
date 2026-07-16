@@ -50,7 +50,9 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    
     let args = Args::parse();
+    let mut server = Server::new(args.host.clone(), args.port);
     let replication_config = match args.replicaof {
         None => ReplicationConfig::new_master(),
         Some(params) => {
@@ -75,6 +77,7 @@ async fn main() -> std::io::Result<()> {
             master_config.host.clone(),
             master_config.port,
             server_sender.clone(),
+            &server.info,
         )
         .await;
     }
